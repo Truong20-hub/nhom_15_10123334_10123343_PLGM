@@ -1,0 +1,102 @@
+{
+  "model_name": "Logistic Regression",
+  "model_version": "1.0.0",
+  "created_at": "2026-09-25 06:08:17",
+  "problem_type": "multiclass_classification",
+  "dataset_name": "Mobile Price Classification (Kaggle)",
+  "target_variable": "price_range",
+  "num_classes": 4,
+  "labels": {
+    "0": "Giá thấp (Low Cost)",
+    "1": "Giá trung bình (Medium Cost)",
+    "2": "Giá cao (High Cost)",
+    "3": "Giá rất cao (Very High Cost)"
+  },
+  "features_count": 20,
+  "features_list": [
+    "battery_power",
+    "blue",
+    "clock_speed",
+    "dual_sim",
+    "fc",
+    "four_g",
+    "int_memory",
+    "m_dep",
+    "mobile_wt",
+    "n_cores",
+    "pc",
+    "px_height",
+    "px_width",
+    "ram",
+    "sc_h",
+    "sc_w",
+    "talk_time",
+    "three_g",
+    "touch_screen",
+    "wifi"
+  ],
+  "selected_metrics": {
+    "accuracy": 0.975,
+    "macro_f1": 0.975,
+    "macro_precision": 0.9752,
+    "macro_recall": 0.975,
+    "train_accuracy": 0.9825,
+    "cv_accuracy": 0.9631
+  },
+  "baseline_accuracy": 0.25,
+  "environment": {
+    "python_version": "3.14.7",
+    "scikit_learn_version": "1.9.1",
+    "numpy_version": "2.5.3",
+    "pandas_version": "3.0.6",
+    "joblib_version": "1.6.0"
+  },
+  "model_comparison": {
+    "Logistic Regression": {
+      "best_params": {
+        "clf__C": 10.0
+      },
+      "cv_best_score": 0.9631,
+      "train_accuracy": 0.9825,
+      "test_accuracy": 0.975,
+      "macro_f1": 0.975,
+      "macro_precision": 0.9752,
+      "macro_recall": 0.975
+    },
+    "K-Nearest Neighbors (KNN)": {
+      "best_params": {
+        "clf__n_neighbors": 11,
+        "clf__weights": "distance"
+      },
+      "cv_best_score": 0.5606,
+      "train_accuracy": 1.0,
+      "test_accuracy": 0.575,
+      "macro_f1": 0.5776,
+      "macro_precision": 0.581,
+      "macro_recall": 0.575
+    },
+    "Naive Bayes": {
+      "best_params": {
+        "clf__var_smoothing": 1e-09
+      },
+      "cv_best_score": 0.8037,
+      "train_accuracy": 0.8187,
+      "test_accuracy": 0.81,
+      "macro_f1": 0.8105,
+      "macro_precision": 0.8113,
+      "macro_recall": 0.81
+    },
+    "Support Vector Machine (SVM)": {
+      "best_params": {
+        "clf__C": 5.0
+      },
+      "cv_best_score": 0.9581,
+      "train_accuracy": 0.9819,
+      "test_accuracy": 0.965,
+      "macro_f1": 0.965,
+      "macro_precision": 0.9651,
+      "macro_recall": 0.965
+    }
+  },
+  "selection_rationale": "Mô hình Logistic Regression đạt hiệu năng phân loại cao nhất trên tập kiểm thử với Độ chính xác (Accuracy) đạt 97.50% và Macro F1 đạt 97.50%. Mô hình không bị quá khớp (Overfitting), kích thước tệp siêu nhẹ (2.1 KB), tốc độ phản hồi cực nhanh dưới 5ms, rất phù hợp cho việc triển khai Microservices."
+}

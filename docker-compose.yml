@@ -1,0 +1,85 @@
+services:
+  # 1. AI Service: Microservice phục vụ mô hình học máy (nạp model.joblib ngay lúc khởi động)
+  ai-service:
+    build:
+      context: .
+      dockerfile: ai-models/service/Dockerfile
+    container_name: mobile_price_ai_service
+    restart: unless-stopped
+    ports:
+      - "${PORT_AI_SERVICE:-8001}:8001"
+    environment:
+      - MODEL_PATH=/app/models/model.joblib
+      - SCHEMA_PATH=/app/models/schema.json
+      - METADATA_PATH=/app/models/metadata.json
+    healthcheck:
+      test: ["CMD-SHELL", "curl -f http://localhost:8001/health || exit 1"]
+      interval: 10s
+      timeout: 5s
+      retries: 3
+      start_period: 10s
+    networks:
+      - mobile_net
+
+  # 2. Database: MongoDB lưu lịch sử dự đoán
+  mongodb:
+    image: mongo:7.0
+    container_name: mobile_price_mongodb
+    restart: unless-stopped
+    ports:
+      - "27017:27017"
+    volumes:
+      - mongo_data:/data/db
+    networks:
+      - mobile_net
+
+  # 3. Backend: Validate theo schema.json, gọi AI Service, ghi nhận vào MongoDB
+  backend:
+    build:
+      context: .
+      dockerfile: app/backend/Dockerfile
+    container_name: mobile_price_backend
+    restart: unless-stopped
+    ports:
+      - "${PORT_BACKEND:-8000}:8000"
+    environment:
+      - PORT_BACKEND=8000
+      - AI_SERVICE_URL=http://ai-service:8001
+      - MONGODB_URI=mongodb://mongodb:27017/mobile_price_db
+      - SCHEMA_PATH=/app/schema.json
+    depends_on:
+      ai-service:
+        condition: service_healthy
+      mongodb:
+        condition: service_started
+    healthcheck:
+      test: ["CMD-SHELL", "curl -f http://localhost:8000/health || exit 1"]
+      interval: 10s
+      timeout: 5s
+      retries: 3
+      start_period: 10s
+    networks:
+      - mobile_net
+
+  # 4. Frontend: Giao diện người dùng Web Nginx (gọi qua proxy hoặc backend)
+  frontend:
+    build:
+      context: .
+      dockerfile: app/frontend/Dockerfile
+    container_name: mobile_price_frontend
+    restart: unless-stopped
+    ports:
+      - "${PORT_FRONTEND:-3000}:3000"
+    depends_on:
+      backend:
+        condition: service_healthy
+    networks:
+      - mobile_net
+
+networks:
+  mobile_net:
+    driver: bridge
+
+volumes:
+  mongo_data:
+    driver: local

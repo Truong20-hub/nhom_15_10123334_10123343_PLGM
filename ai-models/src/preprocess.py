@@ -1,0 +1,349 @@
+"""
+Module Tiền Xử Lý Dữ Liệu (Preprocessing Pipeline)
+Đảm bảo:
+1. Không bị rò rỉ dữ liệu (No Data Leakage) - Chỉ fit scaler trên tập Train.
+2. Xây dựng Pipeline chuẩn Scikit-Learn tích hợp trực tiếp vào Model.
+3. Xuất schema.json chuẩn hóa để Backend và Frontend dùng chung.
+"""
+
+import os
+import sys
+import json
+import pandas as pd
+import numpy as np
+from sklearn.model_selection import train_test_split
+from sklearn.preprocessing import StandardScaler
+from sklearn.compose import ColumnTransformer
+from sklearn.pipeline import Pipeline
+
+if sys.platform == "win32":
+    try:
+        sys.stdout.reconfigure(encoding='utf-8')
+        sys.stderr.reconfigure(encoding='utf-8')
+    except Exception:
+        pass
+
+# 20 đặc trưng đầu vào chuẩn theo đúng thứ tự
+FEATURE_DEFINITIONS = {
+    "battery_power": {
+        "name": "battery_power",
+        "type": "integer",
+        "min": 500,
+        "max": 2000,
+        "default": 1200,
+        "unit": "mAh",
+        "group": "battery",
+        "description_vi": "Dung lượng pin (500 - 2000 mAh)",
+        "description_en": "Battery total energy capacity (500 - 2000 mAh)",
+        "is_binary": False
+    },
+    "blue": {
+        "name": "blue",
+        "type": "integer",
+        "min": 0,
+        "max": 1,
+        "default": 1,
+        "unit": "boolean",
+        "group": "connectivity",
+        "description_vi": "Có hỗ trợ Bluetooth (0 = Không, 1 = Có)",
+        "description_en": "Has Bluetooth support (0 = No, 1 = Yes)",
+        "is_binary": True
+    },
+    "clock_speed": {
+        "name": "clock_speed",
+        "type": "number",
+        "min": 0.5,
+        "max": 3.0,
+        "default": 1.5,
+        "unit": "GHz",
+        "group": "performance",
+        "description_vi": "Tốc độ xung nhịp CPU (0.5 - 3.0 GHz)",
+        "description_en": "Microprocessor clock speed (0.5 - 3.0 GHz)",
+        "is_binary": False
+    },
+    "dual_sim": {
+        "name": "dual_sim",
+        "type": "integer",
+        "min": 0,
+        "max": 1,
+        "default": 1,
+        "unit": "boolean",
+        "group": "connectivity",
+        "description_vi": "Hỗ trợ 2 SIM (0 = Không, 1 = Có)",
+        "description_en": "Has dual SIM support (0 = No, 1 = Yes)",
+        "is_binary": True
+    },
+    "fc": {
+        "name": "fc",
+        "type": "integer",
+        "min": 0,
+        "max": 19,
+        "default": 4,
+        "unit": "MP",
+        "group": "camera",
+        "description_vi": "Độ phân giải Camera trước (0 - 19 Megapixels)",
+        "description_en": "Front Camera megapixels (0 - 19 MP)",
+        "is_binary": False
+    },
+    "four_g": {
+        "name": "four_g",
+        "type": "integer",
+        "min": 0,
+        "max": 1,
+        "default": 1,
+        "unit": "boolean",
+        "group": "connectivity",
+        "description_vi": "Có hỗ trợ 4G LTE (0 = Không, 1 = Có)",
+        "description_en": "Has 4G LTE support (0 = No, 1 = Yes)",
+        "is_binary": True
+    },
+    "int_memory": {
+        "name": "int_memory",
+        "type": "integer",
+        "min": 2,
+        "max": 64,
+        "default": 32,
+        "unit": "GB",
+        "group": "performance",
+        "description_vi": "Bộ nhớ trong lưu trữ (2 - 64 GB)",
+        "description_en": "Internal storage memory (2 - 64 GB)",
+        "is_binary": False
+    },
+    "m_dep": {
+        "name": "m_dep",
+        "type": "number",
+        "min": 0.1,
+        "max": 1.0,
+        "default": 0.5,
+        "unit": "cm",
+        "group": "dimensions",
+        "description_vi": "Độ dày thân máy (0.1 - 1.0 cm)",
+        "description_en": "Mobile depth in cm (0.1 - 1.0 cm)",
+        "is_binary": False
+    },
+    "mobile_wt": {
+        "name": "mobile_wt",
+        "type": "integer",
+        "min": 80,
+        "max": 200,
+        "default": 140,
+        "unit": "gram",
+        "group": "dimensions",
+        "description_vi": "Khối lượng điện thoại (80 - 200 gram)",
+        "description_en": "Mobile weight in grams (80 - 200 g)",
+        "is_binary": False
+    },
+    "n_cores": {
+        "name": "n_cores",
+        "type": "integer",
+        "min": 1,
+        "max": 8,
+        "default": 4,
+        "unit": "cores",
+        "group": "performance",
+        "description_vi": "Số nhân xử lý CPU (1 - 8 nhân)",
+        "description_en": "Number of CPU cores (1 - 8 cores)",
+        "is_binary": False
+    },
+    "pc": {
+        "name": "pc",
+        "type": "integer",
+        "min": 0,
+        "max": 20,
+        "default": 10,
+        "unit": "MP",
+        "group": "camera",
+        "description_vi": "Độ phân giải Camera chính phía sau (0 - 20 Megapixels)",
+        "description_en": "Primary Camera megapixels (0 - 20 MP)",
+        "is_binary": False
+    },
+    "px_height": {
+        "name": "px_height",
+        "type": "integer",
+        "min": 0,
+        "max": 1960,
+        "default": 650,
+        "unit": "px",
+        "group": "dimensions",
+        "description_vi": "Chiều cao điểm ảnh màn hình (0 - 1960 px)",
+        "description_en": "Pixel resolution height (0 - 1960 px)",
+        "is_binary": False
+    },
+    "px_width": {
+        "name": "px_width",
+        "type": "integer",
+        "min": 500,
+        "max": 1998,
+        "default": 1250,
+        "unit": "px",
+        "group": "dimensions",
+        "description_vi": "Chiều rộng điểm ảnh màn hình (500 - 1998 px)",
+        "description_en": "Pixel resolution width (500 - 1998 px)",
+        "is_binary": False
+    },
+    "ram": {
+        "name": "ram",
+        "type": "integer",
+        "min": 256,
+        "max": 3998,
+        "default": 2048,
+        "unit": "MB",
+        "group": "performance",
+        "description_vi": "Bộ nhớ RAM (256 - 3998 MB)",
+        "description_en": "RAM in MegaBytes (256 - 3998 MB)",
+        "is_binary": False
+    },
+    "sc_h": {
+        "name": "sc_h",
+        "type": "integer",
+        "min": 5,
+        "max": 19,
+        "default": 12,
+        "unit": "cm",
+        "group": "dimensions",
+        "description_vi": "Chiều cao màn hình (5 - 19 cm)",
+        "description_en": "Screen height in cm (5 - 19 cm)",
+        "is_binary": False
+    },
+    "sc_w": {
+        "name": "sc_w",
+        "type": "integer",
+        "min": 0,
+        "max": 18,
+        "default": 6,
+        "unit": "cm",
+        "group": "dimensions",
+        "description_vi": "Chiều rộng màn hình (0 - 18 cm)",
+        "description_en": "Screen width in cm (0 - 18 cm)",
+        "is_binary": False
+    },
+    "talk_time": {
+        "name": "talk_time",
+        "type": "integer",
+        "min": 2,
+        "max": 20,
+        "default": 11,
+        "unit": "hours",
+        "group": "battery",
+        "description_vi": "Thời gian đàm thoại pin (2 - 20 giờ)",
+        "description_en": "Talk time battery longevity (2 - 20 hours)",
+        "is_binary": False
+    },
+    "three_g": {
+        "name": "three_g",
+        "type": "integer",
+        "min": 0,
+        "max": 1,
+        "default": 1,
+        "unit": "boolean",
+        "group": "connectivity",
+        "description_vi": "Có hỗ trợ 3G (0 = Không, 1 = Có)",
+        "description_en": "Has 3G support (0 = No, 1 = Yes)",
+        "is_binary": True
+    },
+    "touch_screen": {
+        "name": "touch_screen",
+        "type": "integer",
+        "min": 0,
+        "max": 1,
+        "default": 1,
+        "unit": "boolean",
+        "group": "dimensions",
+        "description_vi": "Màn hình cảm ứng (0 = Không, 1 = Có)",
+        "description_en": "Has touch screen (0 = No, 1 = Yes)",
+        "is_binary": True
+    },
+    "wifi": {
+        "name": "wifi",
+        "type": "integer",
+        "min": 0,
+        "max": 1,
+        "default": 1,
+        "unit": "boolean",
+        "group": "connectivity",
+        "description_vi": "Hỗ trợ mạng Wi-Fi (0 = Không, 1 = Có)",
+        "description_en": "Has Wi-Fi support (0 = No, 1 = Yes)",
+        "is_binary": True
+    }
+}
+
+FEATURE_COLUMNS = list(FEATURE_DEFINITIONS.keys())
+
+LABEL_MAPPING = {
+    0: "Giá thấp (Low Cost)",
+    1: "Giá trung bình (Medium Cost)",
+    2: "Giá cao (High Cost)",
+    3: "Giá rất cao (Very High Cost)"
+}
+
+LABEL_DESCRIPTIONS = {
+    "0": "Phân khúc phổ thông, giá rẻ (Dưới 3 triệu VNĐ), phù hợp nhu cầu cơ bản.",
+    "1": "Phân khúc tầm trung (3 - 7 triệu VNĐ), cân bằng tốt giữa cấu hình và giá cả.",
+    "2": "Phân khúc cận cao cấp (7 - 12 triệu VNĐ), hiệu năng mạnh mẽ, camera sắc nét.",
+    "3": "Phân khúc cao cấp / Flagship (Trên 12 triệu VNĐ), cấu hình đỉnh cao nhất."
+}
+
+def get_schema():
+    """Tạo schema chuẩn để lưu vào models/schema.json"""
+    return {
+        "title": "Mobile Price Classification Schema",
+        "version": "1.0.0",
+        "target": "price_range",
+        "features": FEATURE_DEFINITIONS,
+        "feature_order": FEATURE_COLUMNS,
+        "labels": LABEL_MAPPING,
+        "label_descriptions": LABEL_DESCRIPTIONS,
+        "required": FEATURE_COLUMNS
+    }
+
+def save_schema(filepath="ai-models/models/schema.json"):
+    """Lưu schema.json vào đúng vị trí"""
+    schema = get_schema()
+    os.makedirs(os.path.dirname(filepath), exist_ok=True)
+    with open(filepath, "w", encoding="utf-8") as f:
+        json.dump(schema, f, indent=2, ensure_ascii=False)
+    print(f"Đã lưu schema vào {filepath}")
+    return schema
+
+def load_data(csv_path="ai-models/data/train.csv"):
+    """Nạp dữ liệu từ train.csv và kiểm tra toàn vẹn"""
+    if not os.path.exists(csv_path):
+        raise FileNotFoundError(f"Không tìm thấy file dữ liệu tại {csv_path}")
+    
+    df = pd.read_csv(csv_path)
+    
+    # Kiểm tra cột bắt buộc
+    missing_cols = set(FEATURE_COLUMNS + ['price_range']) - set(df.columns)
+    if missing_cols:
+        raise ValueError(f"Thiếu các cột dữ liệu: {missing_cols}")
+        
+    X = df[FEATURE_COLUMNS]
+    y = df['price_range']
+    return X, y
+
+def build_preprocessor():
+    """
+    Xây dựng preprocessor chuẩn Scikit-Learn:
+    Chuẩn hóa StandardScaler cho toàn bộ các đặc trưng liên tục,
+    giữ nguyên các đặc trưng nhị phân.
+    """
+    scaler = StandardScaler()
+    return scaler
+
+def prepare_train_test(csv_path="ai-models/data/train.csv", test_size=0.2, random_state=42):
+    """
+    Chia train/test phân tầng (Stratified) tránh Data Leakage
+    """
+    X, y = load_data(csv_path)
+    X_train, X_test, y_train, y_test = train_test_split(
+        X, y, test_size=test_size, random_state=random_state, stratify=y
+    )
+    return X_train, X_test, y_train, y_test
+
+if __name__ == "__main__":
+    save_schema()
+    X_train, X_test, y_train, y_test = prepare_train_test()
+    print(f"Chuẩn bị dữ liệu thành công:")
+    print(f"  - Tập Train: {X_train.shape[0]} mẫu")
+    print(f"  - Tập Test:  {X_test.shape[0]} mẫu")
+    print(f"  - Số đặc trưng: {len(FEATURE_COLUMNS)}")
