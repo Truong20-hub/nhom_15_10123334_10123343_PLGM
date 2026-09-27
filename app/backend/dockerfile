@@ -1,0 +1,16 @@
+FROM node:20-alpine
+
+# ---- Cài curl để healthcheck hoạt động được ----
+RUN apk add --no-cache curl
+
+WORKDIR /app
+
+COPY package*.json ./
+
+RUN npm install --omit=dev
+
+COPY . .
+
+EXPOSE 5000
+
+CMD ["node", "server.js"]

@@ -1,0 +1,25 @@
+services:
+  backend:
+    build: ./backend
+    container_name: backend
+    environment:
+      - PORT_BACKEND=5000
+      - AI_SERVICE_URL=${AI_SERVICE_URL}
+    networks:
+      - app-network
+    restart: unless-stopped
+
+  frontend:
+    build: ./frontend
+    container_name: frontend
+    ports:
+      - "8080:80"
+    depends_on:
+      - backend
+    networks:
+      - app-network
+    restart: unless-stopped
+
+networks:
+  app-network:
+    driver: bridge
