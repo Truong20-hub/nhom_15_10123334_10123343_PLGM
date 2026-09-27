@@ -49,7 +49,7 @@ Toàn bộ hệ thống gồm 4 container độc lập kết nối qua mạng n�
 ```
 
 - **Frontend (Port 3000):** Giao diện Nginx hiện đại, hỗ trợ Dark/Light mode, điều khiển thanh trượt 20 thông số, presets cấu hình mẫu và biểu đồ phân phối xác suất 4 lớp.
-- **Backend (Port 8000):** FastAPI API Gateway, kiểm thực dữ liệu nghiêm ngặt theo `schema.json`, chuyển tiếp sang AI Service, lưu lịch sử vào MongoDB (kèm cơ chế bộ nhớ đệm dự phòng).
+- **Backend (Port 8000):** Node.js Express API Gateway (Mô hình MVC), kiểm thực dữ liệu nghiêm ngặt theo `schema.json`, chuyển tiếp sang AI Service, lưu lịch sử vào MongoDB (kèm cơ chế bộ nhớ đệm dự phòng).
 - **AI Service (Port 8001):** FastAPI Microservice chuyên trách suy luận học máy, nạp `model.joblib` ngay khi container khởi động.
 - **MongoDB (Port 27017):** Lưu vết toàn bộ lịch sử dự đoán, thời gian, thông số và độ trễ.
 
@@ -63,7 +63,7 @@ Cấu trúc tuân thủ chính xác 100% quy định tại `AGENT.md`:
 thuNghiem/
 ├── app/
 │   ├── frontend/               # Nginx, HTML5, CSS3, JavaScript, Dockerfile
-│   └── backend/                # FastAPI, Dockerfile, tests/ (pytest)
+│   └── backend/                # Node.js Express (Mô hình MVC), Dockerfile, tests/ (node:test)
 ├── ai-models/
 │   ├── colab/                  # 01_eda.ipynb, 02_preprocess.ipynb, 03_train.ipynb, 04_evaluate.ipynb
 │   ├── src/                    # preprocess.py, train.py, evaluate.py, generate_figures.py
