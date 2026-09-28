@@ -51,30 +51,35 @@ export async function predictPriceRange(features, modelFile, reqId) {
   };
 }
 
-/** Kiểm tra sức khỏe hệ thống (Node backend tự gọi AI service) */
-export async function checkSystemHealth() {
-  const resp = await fetch(`${API_BASE}/health`);
-  const payload = await resp.json().catch(() => ({}));
-  return resp.ok && payload.success;
-}
 /**
- * Gọi backend để đánh giá độ chính xác (accuracy) của 1 model trên dataset chỉ định.
- * Backend trả { success: true, data: { accuracy, ... } }.
+ * Lấy các chỉ số đánh giá model (accuracy, precision, recall, f1_score, confusion_matrix,
+ * classification_report chi tiết từng lớp) trên một dataset cho trước.
+ * Backend trả { success: true, data: {...} } y hệt response của AI service.
  */
-export async function evaluateModelAccuracy(modelFile, datasetName, reqId) {
+export async function evaluateModel(modelFile, datasetName, reqId) {
   const resp = await fetch(
     `${API_BASE}/evaluate?model_name=${encodeURIComponent(modelFile)}&dataset_name=${encodeURIComponent(datasetName)}`,
-    { headers: { "X-Request-ID": reqId } },
+    {
+      method: "GET",
+      headers: { "X-Request-ID": reqId },
+    },
   );
 
   const payload = await resp.json().catch(() => ({}));
 
   if (!resp.ok || payload.success === false) {
-    const msg = payload.message || "Lỗi đánh giá model";
+    const msg = payload.message || "Lỗi lấy chỉ số đánh giá model";
     const error = new Error(msg);
     error.status = resp.status;
     throw error;
   }
 
-  return payload.data?.accuracy;
+  return payload.data;
+}
+
+/** Kiểm tra sức khỏe hệ thống (Node backend tự gọi AI service) */
+export async function checkSystemHealth() {
+  const resp = await fetch(`${API_BASE}/health`);
+  const payload = await resp.json().catch(() => ({}));
+  return resp.ok && payload.success;
 }

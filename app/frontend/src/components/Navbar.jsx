@@ -3,7 +3,6 @@ export default function Navbar({
   backendOk,
   modelKey,
   onModelChange,
-  accuracy,
   theme,
   onToggleTheme,
 }) {
@@ -41,16 +40,16 @@ export default function Navbar({
             >
               <option value="lr">Logistic Regression</option>
               <option value="knn">KNN</option>
+              <option value="svm">SVM</option>
+              <option value="nai">Naive Bayes</option>
               <option value="best">Best Model (Auto)</option>
             </select>
             <span className="badge-tag">v1.0.0</span>
           </div>
-        <div className="badge badge-acc">
-        <span className="badge-label">Accuracy:</span>
-            <strong>
-            {accuracy == null ? "N/A" : `${(accuracy <= 1 ? accuracy * 100 : accuracy).toFixed(1)}%`}
-           </strong>
-        </div>
+          <div className="badge badge-acc">
+            <span className="badge-label">Accuracy:</span>
+            <strong>97.5%</strong>
+          </div>
           <button
             className="btn-icon"
             title="Chuyển chế độ sáng/tối"

@@ -10,7 +10,7 @@ const app = express();
 // Danh sách origin được phép (thêm domain ngrok mới vào đây nếu đổi)
 const allowedOrigins = [
   'https://backtrack-alkalize-altitude.ngrok-free.dev',
-  'http://localhost:3000',
+  'http://localhost:5000',
   'http://localhost:8080',   // ← thêm dòng này
   'http://localhost:5173',
    'https://shoptalk-cherisher-likeness.ngrok-free.dev'   // ← thêm luôn để test trực tiếp frontend nếu cần

@@ -60,6 +60,78 @@ export default function ResultCard({ result }) {
               <span>{result.latencyMs} ms</span>
             </div>
           </div>
+
+          {/* Chỉ số đánh giá model: precision / recall / f1 / confusion matrix */}
+          <EvaluationMetrics metrics={result.metrics} loading={result.metricsLoading} />
+        </div>
+      )}
+    </div>
+  );
+}
+
+function EvaluationMetrics({ metrics, loading }) {
+  if (loading) {
+    return (
+      <div className="metrics-block">
+        <div className="metrics-title">Đang tính chỉ số đánh giá model...</div>
+      </div>
+    );
+  }
+
+  if (!metrics) return null;
+
+  const { accuracy, precision, recall, f1_score: f1Score, confusion_matrix: confusionMatrix } = metrics;
+  const numClasses = confusionMatrix?.length || 0;
+  const pct = (v) => (typeof v === "number" ? `${(v * 100).toFixed(1)}%` : "N/A");
+
+  return (
+    <div className="metrics-block">
+      <div className="metrics-title">Chỉ số đánh giá model ({metrics.dataset || "test set"})</div>
+
+      <div className="metrics-grid">
+        <div className="metric-item">
+          <span className="metric-label">Accuracy</span>
+          <span className="metric-value">{pct(accuracy)}</span>
+        </div>
+        <div className="metric-item">
+          <span className="metric-label">Precision</span>
+          <span className="metric-value">{pct(precision)}</span>
+        </div>
+        <div className="metric-item">
+          <span className="metric-label">Recall</span>
+          <span className="metric-value">{pct(recall)}</span>
+        </div>
+        <div className="metric-item">
+          <span className="metric-label">F1-score</span>
+          <span className="metric-value">{pct(f1Score)}</span>
+        </div>
+      </div>
+
+      {numClasses > 0 && (
+        <div className="confusion-matrix-wrap">
+          <div className="metrics-subtitle">Confusion Matrix</div>
+          <table className="confusion-matrix">
+            <thead>
+              <tr>
+                <th></th>
+                {Array.from({ length: numClasses }).map((_, i) => (
+                  <th key={i}>Dự đoán {i}</th>
+                ))}
+              </tr>
+            </thead>
+            <tbody>
+              {confusionMatrix.map((row, i) => (
+                <tr key={i}>
+                  <th>Thực tế {i}</th>
+                  {row.map((val, j) => (
+                    <td key={j} className={i === j ? "cm-correct" : val > 0 ? "cm-wrong" : ""}>
+                      {val}
+                    </td>
+                  ))}
+                </tr>
+              ))}
+            </tbody>
+          </table>
         </div>
       )}
     </div>

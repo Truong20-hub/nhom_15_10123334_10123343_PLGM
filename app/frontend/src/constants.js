@@ -4,19 +4,23 @@
 
 // Đường dẫn tương đối — vite.config.js sẽ tự proxy "/api" sang backend (localhost:5000).
 // Khi chạy qua ngrok, chỉ cần trỏ ngrok vào port 5173 (port của Vite), KHÔNG cần sửa dòng này.
-export const API_BASE = "api/ai";
-export const DATASET_NAME = "train.csv";
+export const API_BASE = "/api/ai";
 
 // Map giá trị <select modelSelect> -> tên file model thật có trong /model
 export const MODEL_FILE_MAP = {
   lr: "logistic_regression.pkl",
   knn: "knn.pkl",
   best: "best_model.pkl",
+  svm: "svm.pkl",
+  nai: "gaussian_nb.pkl"
 };
 
 // Key lưu lịch sử ở localStorage (vì backend chưa có /api/history)
 export const HISTORY_KEY = "mobile_price_history";
 export const HISTORY_MAX = 10;
+
+// Dataset dùng để đánh giá model (precision/recall/f1/confusion matrix) sau mỗi lần dự đoán
+export const EVAL_DATASET = "train.csv";
 
 // Giá trị mặc định + cấu hình từng thanh trượt (min/max/step/đơn vị/nhãn)
 export const DEFAULT_FEATURES = {

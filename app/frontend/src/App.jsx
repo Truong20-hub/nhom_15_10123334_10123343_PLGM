@@ -7,8 +7,9 @@ import HistoryCard from "./components/HistoryCard.jsx";
 import ToastContainer from "./components/ToastContainer.jsx";
 import { useHistory } from "./hooks/useHistory.js";
 import { useToasts } from "./hooks/useToasts.js";
-import { checkSystemHealth, evaluateModelAccuracy, generateRequestId, logStructured, predictPriceRange } from "./api.js";
-import { DATASET_NAME, DEFAULT_FEATURES, LABELS, MODEL_FILE_MAP, PRESETS, SLIDER_GROUPS } from "./constants.js";
+import { checkSystemHealth, evaluateModel, generateRequestId, logStructured, predictPriceRange } from "./api.js";
+import { DEFAULT_FEATURES, EVAL_DATASET, LABELS, MODEL_FILE_MAP, PRESETS, SLIDER_GROUPS } from "./constants.js";
+
 // Danh sách phẳng tất cả field slider + toggle, dùng để xáo trộn ngẫu nhiên
 const ALL_SLIDER_FIELDS = SLIDER_GROUPS.flatMap((g) => g.fields);
 const ALL_TOGGLE_FIELDS = SLIDER_GROUPS.flatMap((g) => g.toggles || []);
@@ -21,7 +22,6 @@ export default function App() {
   const [result, setResult] = useState(null);
   const [backendStatusText, setBackendStatusText] = useState("Backend: Đang kết nối...");
   const [backendOk, setBackendOk] = useState(false);
-  const [accuracy, setAccuracy] = useState(null);
 
   const { history, addHistoryItem, refreshHistory } = useHistory();
   const { toasts, showToast } = useToasts();
@@ -47,18 +47,6 @@ export default function App() {
       }
     })();
   }, []);
-  useEffect(() => {
-  const reqId = generateRequestId();
-  const modelFile = MODEL_FILE_MAP[modelKey] || MODEL_FILE_MAP.best;
-  (async () => {
-    try {
-      const acc = await evaluateModelAccuracy(modelFile, DATASET_NAME, reqId);
-      setAccuracy(acc);
-    } catch (err) {
-      setAccuracy(null);
-    }
-  })();
-}, [modelKey]);
 
   const handleFieldChange = useCallback((name, value) => {
     setFeatures((prev) => ({ ...prev, [name]: value }));
@@ -116,7 +104,20 @@ export default function App() {
 
       logStructured("INFO", reqId, `200 OK total ${latencyMs}ms, price_range: ${labelIndex}`);
 
-      setResult({ requestId: reqId, labelIndex, model, latencyMs });
+      // Hiện kết quả dự đoán trước, không chờ evaluate (evaluate có thể chậm hơn)
+      setResult({ requestId: reqId, labelIndex, model, latencyMs, metrics: null, metricsLoading: true });
+
+      // Gọi song song việc lấy chỉ số đánh giá model (precision/recall/f1/confusion matrix)
+      evaluateModel(model, EVAL_DATASET, reqId)
+        .then((metrics) => {
+          logStructured("INFO", reqId, `Evaluate OK, accuracy=${metrics?.accuracy}`);
+          setResult((prev) => (prev && prev.requestId === reqId ? { ...prev, metrics, metricsLoading: false } : prev));
+        })
+        .catch((err) => {
+          logStructured("ERROR", reqId, `Lỗi evaluate: ${err.message}`);
+          setResult((prev) => (prev && prev.requestId === reqId ? { ...prev, metrics: null, metricsLoading: false } : prev));
+          showToast("Không lấy được chỉ số đánh giá model (evaluate)", true);
+        });
 
       addHistoryItem({
         request_id: reqId,
@@ -145,8 +146,6 @@ export default function App() {
         backendOk={backendOk}
         modelKey={modelKey}
         onModelChange={setModelKey}
-        
-        accuracy={accuracy}
         theme={theme}
         onToggleTheme={() => setTheme((t) => (t === "light" ? "dark" : "light"))}
       />
