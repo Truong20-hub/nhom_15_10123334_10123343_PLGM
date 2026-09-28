@@ -392,8 +392,7 @@ docker compose logs | grep "req=7f3a"
 Mở tunnel để giáo viên truy cập:
 
 ```bash
-ngrok http 8000      # public Backend (dùng để test API)
-ngrok http 3000      # public Frontend (giao diện), mở ở terminal khác
+ngrok http 8080      # public cả backend và frontend
 ```
 
 | | URL |
